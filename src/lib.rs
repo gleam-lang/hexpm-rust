@@ -369,14 +369,14 @@ fn validate_package_and_version(package: &str, version: &str) -> Result<(), ()> 
 //
 // https://github.com/hexpm/specifications/blob/master/registry-v2.md#signing
 //
-fn verify_payload(mut signed: Signed, public_key: &[u8]) -> Result<Vec<u8>, ()> {
-    // TODO: convert the public key to the right format
+fn verify_payload(mut signed: Signed, pem_public_key: &[u8]) -> Result<Vec<u8>, ()> {
+    // TODO: convert the public key to the right format? ...Maybe? I've tried to do this quite a
+    // few different ways now but I've not had any success.
     // https://twitter.com/obmarg/status/1274722498286956545
-    // https://docs.rs/x509-parser/0.8.0-beta1/x509_parser/pem/index.html
     let payload = signed.take_payload();
     let verification = ring::signature::UnparsedPublicKey::new(
         &ring::signature::RSA_PKCS1_2048_8192_SHA512,
-        public_key,
+        pem_public_key,
     )
     .verify(payload.as_slice(), signed.get_signature());
 
