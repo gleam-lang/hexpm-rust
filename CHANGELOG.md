@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added caret versions which allow only semver compatible updates
+  (aka updates which do not change the leftmost non-zero version number in major.minor.patch)
+  See: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html?highlight=caret#specifying-dependencies-from-cratesio
+
 ## v2.2.0 - 2024-04-10
 
 - Updated for latest version of Reqwest.

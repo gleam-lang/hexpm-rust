@@ -318,6 +318,66 @@ parse_range_test!(
         )
 );
 
+parse_range_test!(
+    caret_only_major,
+    "^4",
+    PubgrubRange::higher_than(v(4, 0, 0))
+        .intersection(&PubgrubRange::strictly_lower_than(v(5, 0, 0)))
+);
+
+parse_range_test!(
+    caret_nonzero_major,
+    "^4.6.5",
+    PubgrubRange::higher_than(v(4, 6, 5))
+        .intersection(&PubgrubRange::strictly_lower_than(v(5, 0, 0)))
+);
+
+parse_range_test!(
+    caret_nonzero_minor,
+    "^0.6.5",
+    PubgrubRange::higher_than(v(0, 6, 5))
+        .intersection(&PubgrubRange::strictly_lower_than(v(0, 7, 0)))
+);
+
+parse_range_test!(
+    caret_zero_major_zero_minor,
+    "^0.0.5",
+    PubgrubRange::exact(v(0, 0, 5))
+);
+
+parse_range_test!(
+    caret_nonzero_major_pre,
+    "^4.6.5-eee",
+    PubgrubRange::higher_than(v_(
+        4,
+        6,
+        5,
+        vec![Identifier::AlphaNumeric("eee".to_string())],
+        None,
+    ))
+    .intersection(&PubgrubRange::strictly_lower_than(v(5, 0, 0)))
+);
+
+parse_range_test!(
+    greater_or_caret,
+    "> 10.0.0 or ^ 3.0.0",
+    PubgrubRange::higher_than(v(10, 0, 1)).union(
+        &PubgrubRange::higher_than(v(3, 0, 0))
+            .intersection(&PubgrubRange::strictly_lower_than(v(4, 0, 0)))
+    )
+);
+
+parse_range_test!(
+    caret_or_caret,
+    "^ 0.1.0 or ^3.0.0",
+    PubgrubRange::higher_than(v(0, 1, 0))
+        .intersection(&PubgrubRange::strictly_lower_than(v(0, 2, 0)))
+        .union(
+            &PubgrubRange::higher_than(v(3, 0, 0))
+                .intersection(&PubgrubRange::strictly_lower_than(v(4, 0, 0)))
+        )
+);
+
 parse_range_fail_test!(range_quad, "1.1.1.1");
 parse_range_fail_test!(range_just_major, "1");
 parse_range_fail_test!(range_just_major_minor, "1.1");

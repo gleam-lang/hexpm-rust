@@ -50,6 +50,8 @@ pub enum Token<'input> {
     GtEq,
     /// '~>`
     Pessimistic,
+    /// '^'
+    Caret,
     /// `.`
     Dot,
     /// `-`
@@ -91,6 +93,7 @@ impl<'input> std::fmt::Display for Token<'input> {
             LtEq => write!(f, "<="),
             GtEq => write!(f, "<="),
             Pessimistic => write!(f, "~>"),
+            Caret => write!(f, "^"),
             Dot => write!(f, "."),
             Hyphen => write!(f, "-"),
             Plus => write!(f, "+"),
@@ -240,6 +243,7 @@ impl<'input> Iterator for Lexer<'input> {
                     }
                     '>' => Gt,
                     '<' => Lt,
+                    '^' => Caret,
                     '.' => Dot,
                     '-' => Hyphen,
                     '+' => Plus,
@@ -270,7 +274,7 @@ mod tests {
     #[test]
     pub fn simple_tokens() {
         assert_eq!(
-            lex("!===><<=>=~>.-+orand"),
+            lex("!===><<=>=~>^.-+orand"),
             vec![
                 NotEq,
                 Eq,
@@ -279,6 +283,7 @@ mod tests {
                 LtEq,
                 GtEq,
                 Pessimistic,
+                Caret,
                 Dot,
                 Hyphen,
                 Plus,

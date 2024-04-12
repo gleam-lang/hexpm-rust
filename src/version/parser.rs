@@ -295,6 +295,46 @@ impl<'input> Parser<'input> {
         )
     }
 
+    fn caret_version_constraint(&mut self) -> Result<PubgrubRange, Error> {
+        let major = self.numeric()?;
+        let minor = match self.peek() {
+            Some(Token::Dot) => {
+                self.pop()?;
+                self.numeric()?
+            }
+            _ => 0,
+        };
+        let patch = match self.peek() {
+            Some(Token::Dot) => {
+                self.pop()?;
+                self.numeric()?
+            }
+            _ => 0,
+        };
+        let pre = self.pre()?;
+        let build = self.plus_build_metadata()?;
+
+        let lower = Version {
+            major,
+            minor,
+            patch,
+            pre,
+            build,
+        };
+        let upper = if major != 0 {
+            lower.bump_major()
+        } else if minor != 0 {
+            lower.bump_minor()
+        } else {
+            // The version 0.0.x is not considered compatible with any other version.
+            return Ok(PubgrubRange::exact(lower));
+        };
+        Ok(
+            PubgrubRange::higher_than(lower)
+                .intersection(&PubgrubRange::strictly_lower_than(upper)),
+        )
+    }
+
     fn range_ands_section(&mut self) -> Result<PubgrubRange, Error> {
         use Token::*;
         let mut range = None;
@@ -354,6 +394,12 @@ impl<'input> Parser<'input> {
                     self.pop()?;
                     self.skip_whitespace()?;
                     range = and(range, self.pessimistic_version_constraint()?);
+                }
+
+                Some(Caret) => {
+                    self.pop()?;
+                    self.skip_whitespace()?;
+                    range = and(range, self.caret_version_constraint()?);
                 }
 
                 Some(_) => return Err(UnexpectedToken(self.pop()?.to_string())),
