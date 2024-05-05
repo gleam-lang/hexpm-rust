@@ -561,7 +561,7 @@ pub enum ApiError {
     #[error("this account is not authorized for this action")]
     Forbidden,
 
-    #[error("must explicitly express your intention to replace the release")]
+    #[error("did not use --replace to explicitly replace the release")]
     NotReplacing,
 
     #[error("can only modify a release up to one hour after publication")]
