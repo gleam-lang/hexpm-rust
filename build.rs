@@ -1,7 +1,7 @@
 fn main() {
     // protobuf_codegen::Codegen::new()
     //     .out_dir("src/proto")
-    //     .inputs(&[
+    //     .inputs([
     //         // "proto/names.proto",
     //         "proto/signed.proto",
     //         "proto/package.proto",
