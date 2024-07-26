@@ -18,6 +18,7 @@ use serde_json::json;
 use std::{
     collections::HashMap,
     convert::{TryFrom, TryInto},
+    env,
     fmt::Display,
     io::BufReader,
 };
@@ -36,8 +37,41 @@ pub struct Config {
 impl Config {
     pub fn new() -> Self {
         Self {
-            api_base: http::Uri::from_static("https://hex.pm/api/"),
-            repository_base: http::Uri::from_static("https://repo.hex.pm/"),
+            api_base: Self::parse_uri_from_env_or_default("HEX_API_URL", "https://hex.pm/api/"),
+            repository_base: Self::parse_uri_from_env_or_default(
+                "HEX_CDN_URL",
+                "https://repo.hex.pm/",
+            ),
+        }
+    }
+
+    fn parse_uri_from_env_or_default(env_var: &str, default: &'static str) -> http::Uri {
+        match env::var(env_var) {
+            Ok(url) => url.parse().unwrap_or_else(|_| {
+                eprintln!(
+                    "error: The {} environment variable contains an invalid URI.",
+                    env_var
+                );
+                eprintln!("");
+                eprintln!("You can:");
+                eprintln!("  - check the current value with: echo ${}", env_var);
+                eprintln!("  - set a new value with: export {}=<uri>", env_var);
+                eprintln!("  - use the default ({}) with: unset {}", default, env_var);
+                std::process::exit(1);
+            }),
+            Err(env::VarError::NotPresent) => http::Uri::from_static(default),
+            Err(env::VarError::NotUnicode(_)) => {
+                eprintln!(
+                    "error: The {} environment variable contains invalid Unicode.",
+                    env_var
+                );
+                eprintln!("");
+                eprintln!("You can:");
+                eprintln!("  - check the current value with: echo ${}", env_var);
+                eprintln!("  - set a new value with: export {}=<uri>", env_var);
+                eprintln!("  - use the default ({}) with: unset {}", default, env_var);
+                std::process::exit(1);
+            }
         }
     }
 
