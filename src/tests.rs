@@ -1250,3 +1250,52 @@ async fn get_package_release_ok() {
         }
     )
 }
+
+#[test]
+fn config_new_uses_defaults_when_hex_env_vars_are_not_set() {
+    temp_env::with_vars_unset(vec!["HEX_API_URL", "HEX_CDN_URL"], || {
+        let config = Config::new();
+        assert_eq!(
+            config.api_base,
+            http::Uri::from_static("https://hex.pm/api/")
+        );
+        assert_eq!(
+            config.repository_base,
+            http::Uri::from_static("https://repo.hex.pm/")
+        );
+    });
+}
+
+#[test]
+#[should_panic(expected = "Error: The HEX_API_URL environment variable contains an invalid URI.")]
+fn config_new_fails_on_invalid_hex_api_url() {
+    temp_env::with_var("HEX_API_URL", Some("an invalid url"), || {
+        Config::new();
+    });
+}
+
+#[test]
+#[should_panic(expected = "Error: The HEX_CDN_URL environment variable contains an invalid URI.")]
+fn config_new_fails_on_invalid_hex_cdn_url() {
+    temp_env::with_var("HEX_CDN_URL", Some("an invalid url"), || {
+        Config::new();
+    });
+}
+
+#[test]
+fn config_new_uses_custom_urls_when_hex_env_vars_are_set() {
+    let custom_api = "https://example.com/api/";
+    let custom_cdn = "https://cdn.example.com/";
+
+    temp_env::with_vars(
+        vec![
+            ("HEX_API_URL", Some(custom_api)),
+            ("HEX_CDN_URL", Some(custom_cdn)),
+        ],
+        || {
+            let config = Config::new();
+            assert_eq!(config.api_base, http::Uri::from_static(custom_api));
+            assert_eq!(config.repository_base, http::Uri::from_static(custom_cdn));
+        },
+    );
+}
