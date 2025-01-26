@@ -50,8 +50,6 @@ mockito = "1.4"
 tokio = { version = "1", features = ["full"] }
 # toml encoding
 toml = "0.8"
-# Testing of environment variables
-temp-env = "0.3.6"
 
 [build-dependencies]
 # Protobuf code generation
