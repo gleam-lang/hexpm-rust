@@ -58,7 +58,7 @@ async fn authenticate_test_success() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let secret = crate::create_api_key_response(
@@ -95,7 +95,7 @@ async fn authenticate_test_rate_limted() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::create_api_key_response(
@@ -142,7 +142,7 @@ async fn authenticate_test_bad_creds() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::create_api_key_response(
@@ -181,7 +181,7 @@ async fn remove_docs_success() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::remove_docs_response(
@@ -214,7 +214,7 @@ async fn revert_release_success() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::revert_release_response(
@@ -252,7 +252,7 @@ async fn add_owner_success() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::add_owner_response(
@@ -291,7 +291,7 @@ async fn transfer_owner_success() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::transfer_owner_response(
@@ -324,7 +324,7 @@ async fn remove_owner_success() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::remove_owner_response(
@@ -353,7 +353,7 @@ async fn remove_key_success() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::remove_api_key_response(
@@ -382,7 +382,7 @@ async fn remove_key_success_2() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::remove_api_key_response(
@@ -415,7 +415,7 @@ async fn remove_docs_unknown_package_version() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::remove_docs_response(
@@ -452,7 +452,7 @@ async fn remove_docs_rate_limted() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::remove_docs_response(
@@ -496,7 +496,7 @@ async fn remove_docs_invalid_key() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::remove_docs_response(
@@ -540,7 +540,7 @@ async fn remove_docs_forbidden() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::remove_docs_response(
@@ -564,7 +564,7 @@ async fn remove_docs_bad_package_name() {
     let package = "not valid";
     let version = "1.2.0";
 
-    let config = Config::new();
+    let config = Config::default();
 
     match crate::remove_docs_request(package, version, key, &config).unwrap_err() {
         ApiError::InvalidPackageNameFormat(p) if p == package => (),
@@ -592,7 +592,7 @@ async fn publish_docs_success() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::publish_docs_response(
@@ -616,7 +616,7 @@ async fn publish_docs_bad_package_name() {
     let version = "1.2.0";
     let tarball = std::include_bytes!("../test/example.tar.gz").to_vec();
 
-    let config = Config::new();
+    let config = Config::default();
 
     match crate::publish_docs_request(package, version, tarball, key, &config).unwrap_err() {
         ApiError::InvalidPackageNameFormat(p) if p == package => (),
@@ -631,7 +631,7 @@ async fn publish_docs_bad_package_version() {
     let version = "invalid version";
     let tarball = std::include_bytes!("../test/example.tar.gz").to_vec();
 
-    let config = Config::new();
+    let config = Config::default();
 
     match crate::publish_docs_request(package, version, tarball, key, &config).unwrap_err() {
         ApiError::InvalidVersionFormat(v) if v == version => (),
@@ -659,7 +659,7 @@ async fn publish_docs_not_found() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::publish_docs_response(
@@ -696,7 +696,7 @@ async fn publish_docs_rate_limit() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::publish_docs_response(
@@ -740,7 +740,7 @@ async fn publish_docs_invalid_api_key() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::publish_docs_response(
@@ -784,7 +784,7 @@ async fn publish_docs_forbidden() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::publish_docs_response(
@@ -816,7 +816,7 @@ async fn get_package_ok_test() {
         .await;
 
     // Test!
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.repository_base = http::Uri::try_from(server.url()).unwrap();
 
     let package = crate::get_package_response(
@@ -943,7 +943,7 @@ async fn get_package_ok_test() {
 
 #[tokio::test]
 async fn get_package_not_found() {
-    let config = Config::new();
+    let config = Config::default();
     let error = crate::get_package_response(
         http_send(crate::get_package_request(
             "louissaysthispackagedoesnotexist",
@@ -974,7 +974,7 @@ async fn get_repository_versions_ok_test() {
         .await;
 
     // Test!
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.repository_base = http::Uri::try_from(server.url()).unwrap();
 
     let versions = crate::get_repository_versions_response(
@@ -1005,7 +1005,7 @@ async fn get_repository_versions_ok_test() {
 
 #[tokio::test]
 async fn get_repository_tarball_ok_test() {
-    let config = Config::new();
+    let config = Config::default();
     let checksum =
         base16::decode("9107f6a859cb96945ad9a099085db028ca2bebb3c8ea42eec227b51c614cc2e0").unwrap();
 
@@ -1030,7 +1030,7 @@ async fn get_repository_tarball_ok_test() {
 
 #[tokio::test]
 async fn get_repository_tarball_bad_checksum_test() {
-    let config = Config::new();
+    let config = Config::default();
     let checksum = vec![1, 2, 3, 4, 5];
 
     let err = crate::get_package_tarball_response(
@@ -1054,7 +1054,7 @@ async fn get_repository_tarball_bad_checksum_test() {
 
 #[tokio::test]
 async fn get_repository_tarball_not_found_test() {
-    let config = Config::new();
+    let config = Config::default();
     let checksum = vec![1, 2, 3, 4, 5];
 
     let err = crate::get_package_tarball_response(
@@ -1088,7 +1088,7 @@ async fn publish_package_success() {
         .create_async()
         .await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::publish_package_response(
@@ -1127,7 +1127,7 @@ async fn modify_package_late() {
         )
         .create_async().await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::publish_package_response(
@@ -1166,7 +1166,7 @@ async fn not_replacing() {
         )
         .create_async().await;
 
-    let mut config = Config::new();
+    let mut config = Config::default();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
     let result = crate::publish_package_response(
@@ -1185,7 +1185,7 @@ async fn not_replacing() {
 
 #[tokio::test]
 async fn get_package_release_not_found() {
-    let config = Config::new();
+    let config = Config::default();
     let error = crate::get_package_release_response(
         http_send(crate::get_package_release_request(
             "louissaysthispackagedoesnotexist",
@@ -1203,7 +1203,7 @@ async fn get_package_release_not_found() {
 
 #[tokio::test]
 async fn get_package_release_ok() {
-    let config = Config::new();
+    let config = Config::default();
     let resp = crate::get_package_release_response(
         http_send(crate::get_package_release_request(
             "clint", "0.0.1", None, &config,

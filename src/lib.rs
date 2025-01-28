@@ -34,13 +34,6 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new() -> Self {
-        Self {
-            api_base: http::Uri::from_static("https://hex.pm/api/"),
-            repository_base: http::Uri::from_static("https://repo.hex.pm/"),
-        }
-    }
-
     fn api_request(
         &self,
         method: http::Method,
@@ -63,7 +56,10 @@ impl Config {
 }
 impl Default for Config {
     fn default() -> Self {
-        Self::new()
+        Self {
+            api_base: http::Uri::from_static("https://hex.pm/api/"),
+            repository_base: http::Uri::from_static("https://repo.hex.pm/"),
+        }
     }
 }
 
