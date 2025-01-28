@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Updated protobuf to 3.7.1 and regenerated code from .proto files
+- Breaking: Replaced `Config::new()` with `Config::default()` for creating a Config
+  instance with default Hex API and repository URLs.
 
 ## v3.1.0 - 2024-06-23
 
