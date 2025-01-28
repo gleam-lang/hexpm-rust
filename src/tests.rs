@@ -1250,3 +1250,20 @@ async fn get_package_release_ok() {
         }
     )
 }
+
+#[test]
+fn ensure_config_default_values() {
+    let config = Config::default();
+
+    assert_eq!(
+        config.api_base,
+        http::Uri::from_static("https://hex.pm/api/"),
+        "Default API URI should be hex.pm/api"
+    );
+
+    assert_eq!(
+        config.repository_base,
+        http::Uri::from_static("https://repo.hex.pm/"),
+        "Default repository URI should be repo.hex.pm"
+    );
+}
