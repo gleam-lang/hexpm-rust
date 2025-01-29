@@ -1267,3 +1267,81 @@ fn ensure_config_default_values() {
         "Default repository URI should be repo.hex.pm"
     );
 }
+
+#[test]
+fn config_with_custom_api_and_default_repository() {
+    let custom_api: http::Uri = "https://example.com/api/".parse().unwrap();
+    let config = Config::default().with_custom_api(custom_api.clone());
+
+    assert_eq!(
+        config.api_base, custom_api,
+        "API URI should be updated to custom value"
+    );
+
+    assert_eq!(
+        config.repository_base,
+        http::Uri::from_static("https://repo.hex.pm/"),
+        "Repository URI should remain at default"
+    );
+}
+
+#[test]
+fn config_with_default_api_and_custom_repository() {
+    let custom_repository: http::Uri = "https://repo.example.com/".parse().unwrap();
+    let config = Config::default().with_custom_repository(custom_repository.clone());
+
+    assert_eq!(
+        config.api_base,
+        http::Uri::from_static("https://hex.pm/api/"),
+        "API URI should remain at default"
+    );
+
+    assert_eq!(
+        config.repository_base, custom_repository,
+        "Repository URI should be updated to custom value"
+    );
+}
+
+#[test]
+fn config_with_custom_api_and_custom_repository() {
+    let custom_api: http::Uri = "https://example.com/api/".parse().unwrap();
+    let custom_repository: http::Uri = "https://repo.example.com/".parse().unwrap();
+
+    let config = Config::default()
+        .with_custom_api(custom_api.clone())
+        .with_custom_repository(custom_repository.clone());
+
+    assert_eq!(
+        config.api_base, custom_api,
+        "API URI should be updated to custom value"
+    );
+
+    assert_eq!(
+        config.repository_base, custom_repository,
+        "Repository URI should be updated to custom value"
+    );
+}
+
+#[test]
+fn ensure_that_config_builder_order_does_not_matter() {
+    let custom_api: http::Uri = "https://example.com/api/".parse().unwrap();
+    let custom_repository: http::Uri = "https://repo.example.com/".parse().unwrap();
+
+    let config1 = Config::default()
+        .with_custom_api(custom_api.clone())
+        .with_custom_repository(custom_repository.clone());
+
+    let config2 = Config::default()
+        .with_custom_repository(custom_repository.clone())
+        .with_custom_api(custom_api.clone());
+
+    assert_eq!(
+        config1.api_base, config2.api_base,
+        "API URI should be the same regardless of builder order"
+    );
+
+    assert_eq!(
+        config1.repository_base, config2.repository_base,
+        "Repository URI should be the same regardless of builder order"
+    );
+}
