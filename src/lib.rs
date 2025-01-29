@@ -34,6 +34,16 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn with_custom_api(mut self, api_base: http::Uri) -> Self {
+        self.api_base = api_base;
+        self
+    }
+
+    pub fn with_custom_repository(mut self, repository_base: http::Uri) -> Self {
+        self.repository_base = repository_base;
+        self
+    }
+
     fn api_request(
         &self,
         method: http::Method,
