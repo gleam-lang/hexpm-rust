@@ -5,6 +5,26 @@
 - Updated protobuf to 3.7.1 and regenerated code from .proto files
 - Breaking: Replaced `Config::new()` with `Config::default()` for creating a Config
   instance with default Hex API and repository URLs.
+- Added builder methods `with_custom_api` and `with_custom_repository` to Config,
+  allowing customization of the Hex API and repository URLs.
+
+  ```rust
+  // Use default API URL and repository URL
+  let config = Config::default()
+
+  // Use custom API URL and default repository URL
+  let config = Config::default()
+      .with_custom_api("https://example.com/api/".parse().unwrap());
+
+  // Use default API URL and custom repository URL
+  let config = Config::default()
+      .with_custom_repository("https://repo.example.com/".parse().unwrap());
+
+  // Use custom URLs for both
+  let config = Config::default()
+      .with_custom_api("https://example.com/api/".parse().unwrap())
+      .with_custom_repository("https://repo.example.com/".parse().unwrap());
+  ```
 
 ## v3.1.0 - 2024-06-23
 
