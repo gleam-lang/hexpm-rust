@@ -326,28 +326,15 @@ impl Identifier {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct Range(String);
-
-impl Range {
-    pub fn new(spec: String) -> Self {
-        Self(spec)
-    }
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Range {
+    spec: String,
+    range: pubgrub::range::Range<Version>,
 }
 
 impl Range {
-    pub fn to_pubgrub(&self) -> Result<pubgrub::range::Range<Version>, parser::Error> {
-        Version::parse_range(&self.0)
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl fmt::Debug for Range {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Range").field(&self.0.to_string()).finish()
+    pub fn new(spec: String) -> Result<Self, parser::Error> {
+        Version::parse_range(&spec).map(|range| Range { spec, range })
     }
 }
 
@@ -357,7 +344,7 @@ impl<'de> Deserialize<'de> for Range {
         D: Deserializer<'de>,
     {
         let s: &str = Deserialize::deserialize(deserializer)?;
-        Ok(Range::new(s.to_string()))
+        Range::new(s.to_string()).map_err(|e| serde::de::Error::custom(e.to_string()))
     }
 }
 
@@ -372,8 +359,7 @@ impl Serialize for Range {
 
 impl fmt::Display for Range {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)?;
-        Ok(())
+        f.write_str(&self.spec)
     }
 }
 
@@ -470,10 +456,7 @@ where
             // If the version was locked we verify that the requirement is
             // compatible with the locked version.
             Some(locked_version) => {
-                let compatible = range
-                    .to_pubgrub()
-                    .map_err(|e| ResolutionError::Failure(format!("Failed to parse range {}", e)))?
-                    .contains(locked_version);
+                let compatible = range.range.contains(locked_version);
                 if !compatible {
                     return Err(ResolutionError::Failure(format!(
                         "{package} is specified with the requirement `{requirement}`, \
@@ -619,7 +602,7 @@ impl pubgrub::solver::DependencyProvider<PackageName, Version> for DependencyPro
 
         let mut deps: Map<String, PubgrubRange> = Default::default();
         for (name, d) in &release.requirements {
-            let range = d.requirement.to_pubgrub()?;
+            let range = d.requirement.range.clone();
             deps.insert(name.clone(), range);
         }
         Ok(Dependencies::Known(deps))

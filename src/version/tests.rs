@@ -482,7 +482,7 @@ fn make_remote() -> Box<Remote> {
                             app: None,
                             optional: false,
                             repository: None,
-                            requirement: Range::new(">= 0.1.0".to_string()),
+                            requirement: Range::new(">= 0.1.0".to_string()).unwrap(),
                         },
                     )]
                     .into(),
@@ -498,7 +498,7 @@ fn make_remote() -> Box<Remote> {
                             app: None,
                             optional: false,
                             repository: None,
-                            requirement: Range::new(">= 0.1.0".to_string()),
+                            requirement: Range::new(">= 0.1.0".to_string()).unwrap(),
                         },
                     )]
                     .into(),
@@ -514,7 +514,7 @@ fn make_remote() -> Box<Remote> {
                             app: None,
                             optional: false,
                             repository: None,
-                            requirement: Range::new(">= 0.1.0".to_string()),
+                            requirement: Range::new(">= 0.1.0".to_string()).unwrap(),
                         },
                     )]
                     .into(),
@@ -560,7 +560,11 @@ fn resolution_with_locked() {
     let result = resolve_versions(
         make_remote(),
         "app".to_string(),
-        vec![("gleam_stdlib".to_string(), Range::new("~> 0.1".to_string()))].into_iter(),
+        vec![(
+            "gleam_stdlib".to_string(),
+            Range::new("~> 0.1".to_string()).unwrap(),
+        )]
+        .into_iter(),
         &vec![locked_stdlib].into_iter().collect(),
     )
     .unwrap();
@@ -589,7 +593,11 @@ fn resolution_1_dep() {
     let result = resolve_versions(
         make_remote(),
         "app".to_string(),
-        vec![("gleam_stdlib".to_string(), Range::new("~> 0.1".to_string()))].into_iter(),
+        vec![(
+            "gleam_stdlib".to_string(),
+            Range::new("~> 0.1".to_string()).unwrap(),
+        )]
+        .into_iter(),
         &vec![].into_iter().collect(),
     )
     .unwrap();
@@ -609,7 +617,11 @@ fn resolution_with_nested_deps() {
     let result = resolve_versions(
         make_remote(),
         "app".to_string(),
-        vec![("gleam_otp".to_string(), Range::new("~> 0.1".to_string()))].into_iter(),
+        vec![(
+            "gleam_otp".to_string(),
+            Range::new("~> 0.1".to_string()).unwrap(),
+        )]
+        .into_iter(),
         &vec![].into_iter().collect(),
     )
     .unwrap();
@@ -632,7 +644,11 @@ fn resolution_locked_to_older_version() {
     let result = resolve_versions(
         make_remote(),
         "app".to_string(),
-        vec![("gleam_otp".to_string(), Range::new("~> 0.1.0".to_string()))].into_iter(),
+        vec![(
+            "gleam_otp".to_string(),
+            Range::new("~> 0.1.0".to_string()).unwrap(),
+        )]
+        .into_iter(),
         &vec![].into_iter().collect(),
     )
     .unwrap();
@@ -657,7 +673,7 @@ fn resolution_retired_versions_not_used_by_default() {
         "app".to_string(),
         vec![(
             "package_with_retired".to_string(),
-            Range::new("> 0.0.0".to_string()),
+            Range::new("> 0.0.0".to_string()).unwrap(),
         )]
         .into_iter(),
         &vec![].into_iter().collect(),
@@ -682,7 +698,7 @@ fn resolution_retired_versions_can_be_used_if_locked() {
         "app".to_string(),
         vec![(
             "package_with_retired".to_string(),
-            Range::new("> 0.0.0".to_string()),
+            Range::new("> 0.0.0".to_string()).unwrap(),
         )]
         .into_iter(),
         &vec![("package_with_retired".to_string(), Version::new(0, 2, 0))]
@@ -709,7 +725,7 @@ fn resolution_prerelease_can_be_selected() {
         "app".to_string(),
         vec![(
             "gleam_otp".to_string(),
-            Range::new("~> 0.3.0-rc1".to_string()),
+            Range::new("~> 0.3.0-rc1".to_string()).unwrap(),
         )]
         .into_iter(),
         &vec![].into_iter().collect(),
@@ -737,7 +753,11 @@ fn resolution_not_found_dep() {
     resolve_versions(
         make_remote(),
         "app".to_string(),
-        vec![("unknown".to_string(), Range::new("~> 0.1".to_string()))].into_iter(),
+        vec![(
+            "unknown".to_string(),
+            Range::new("~> 0.1".to_string()).unwrap(),
+        )]
+        .into_iter(),
         &vec![].into_iter().collect(),
     )
     .unwrap_err();
@@ -750,7 +770,7 @@ fn resolution_no_matching_version() {
         "app".to_string(),
         vec![(
             "gleam_stdlib".to_string(),
-            Range::new("~> 99.0".to_string()),
+            Range::new("~> 99.0".to_string()).unwrap(),
         )]
         .into_iter(),
         &vec![].into_iter().collect(),
@@ -765,7 +785,7 @@ fn resolution_locked_version_doesnt_satisfy_requirements() {
         "app".to_string(),
         vec![(
             "gleam_stdlib".to_string(),
-            Range::new("~> 0.1.0".to_string()),
+            Range::new("~> 0.1.0".to_string()).unwrap(),
         )]
         .into_iter(),
         &vec![("gleam_stdlib".into(), Version::new(0, 2, 0))]
