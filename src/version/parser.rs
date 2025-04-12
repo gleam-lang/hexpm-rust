@@ -5,10 +5,11 @@ use std::mem;
 
 use self::Error::*;
 use super::lexer::{self, Lexer, Token};
+use crate::version::exact;
 use crate::version::{Identifier, Version};
 use thiserror::Error;
 
-type PubgrubRange = pubgrub::range::Range<Version>;
+type PubgrubRange = pubgrub::Range<Version>;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Error)]
 pub enum Error {
@@ -322,11 +323,11 @@ impl<'input> Parser<'input> {
             self.skip_whitespace()?;
             match self.peek() {
                 None => break,
-                Some(Numeric(_)) => range = and(range, PubgrubRange::exact(self.version()?)),
+                Some(Numeric(_)) => range = and(range, exact(self.version()?)),
 
                 Some(Eq) => {
                     self.pop()?;
-                    range = and(range, PubgrubRange::exact(self.version()?));
+                    range = and(range, exact(self.version()?));
                 }
 
                 Some(NotEq) => {

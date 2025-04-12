@@ -3,31 +3,34 @@
 //! internally as well as be the Elixir build tool Hex client.
 
 use std::{
-    borrow::Borrow, cell::RefCell, cmp::Ordering, collections::HashMap, convert::TryFrom,
-    error::Error as StdError, fmt,
+    cell::RefCell,
+    cmp::{Ordering, Reverse},
+    collections::HashMap,
+    convert::TryFrom,
+    error::Error as StdError,
+    fmt::{self, Display},
 };
 
 use crate::{Dependency, Package, Release};
 
 use self::parser::Parser;
-use pubgrub::{
-    error::PubGrubError,
-    solver::{Dependencies, choose_package_with_fewest_versions},
-    type_aliases::Map,
-};
+use pubgrub::{Dependencies, Map, PubGrubError};
 use serde::{
     Deserialize, Serialize,
     de::{self, Deserializer},
 };
-
-pub use pubgrub::report as pubgrub_report;
 
 mod lexer;
 mod parser;
 #[cfg(test)]
 mod tests;
 
-type PubgrubRange = pubgrub::range::Range<Version>;
+type PubgrubRange = pubgrub::Range<Version>;
+
+pub fn exact(v: Version) -> PubgrubRange {
+    let v1 = v.bump();
+    PubgrubRange::between(v, v1)
+}
 
 /// In a nutshell, a version is represented by three numbers:
 ///
@@ -113,7 +116,7 @@ impl Version {
     }
 
     /// Parse a Hex compatible version range. i.e. `> 1 and < 2 or == 4.5.2`.
-    fn parse_range(input: &str) -> Result<pubgrub::range::Range<Version>, parser::Error> {
+    fn parse_range(input: &str) -> Result<PubgrubRange, parser::Error> {
         let mut parser = Parser::new(input)?;
         let version = parser.range()?;
         if !parser.is_eof() {
@@ -174,11 +177,7 @@ impl std::cmp::Ord for Version {
     }
 }
 
-impl pubgrub::version::Version for Version {
-    fn lowest() -> Self {
-        Self::new(0, 0, 0)
-    }
-
+impl Version {
     fn bump(&self) -> Self {
         if self.is_pre() {
             let mut pre = self.pre.clone();
@@ -329,7 +328,7 @@ impl Identifier {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Range {
     spec: String,
-    range: pubgrub::range::Range<Version>,
+    range: PubgrubRange,
 }
 
 impl Range {
@@ -397,14 +396,14 @@ impl std::cmp::Ord for PreOrder<'_> {
 
 pub type PackageVersions = HashMap<String, Version>;
 
-pub type ResolutionError = PubGrubError<String, Version>;
+pub type ResolutionError<'a> = PubGrubError<DependencyProvider<'a>>;
 
 pub fn resolve_versions<Requirements>(
     remote: Box<dyn PackageFetcher>,
     root_name: PackageName,
     dependencies: Requirements,
     locked: &HashMap<String, Version>,
-) -> Result<PackageVersions, ResolutionError>
+) -> Result<PackageVersions, DependencyError<'_>>
 where
     Requirements: Iterator<Item = (String, Range)>,
 {
@@ -420,7 +419,7 @@ where
             meta: (),
         }],
     };
-    let packages = pubgrub::solver::resolve(
+    let packages = pubgrub::resolve(
         &DependencyProvider::new(remote, root, locked),
         root_name.clone(),
         root_version,
@@ -432,10 +431,55 @@ where
     Ok(packages)
 }
 
+#[derive(Debug)]
+pub enum DependencyError<'a> {
+    IncompatibleLockedVersion(Box<IncompatibleLockedVersion>),
+    ResolutionError(ResolutionError<'a>),
+}
+impl Display for DependencyError<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let msg = match self {
+            DependencyError::IncompatibleLockedVersion(e) => e.to_string(),
+            DependencyError::ResolutionError(e) => e.to_string(),
+        };
+        f.write_str(&msg)
+    }
+}
+impl StdError for DependencyError<'_> {}
+impl From<Box<IncompatibleLockedVersion>> for DependencyError<'_> {
+    fn from(value: Box<IncompatibleLockedVersion>) -> Self {
+        Self::IncompatibleLockedVersion(value)
+    }
+}
+impl<'a> From<ResolutionError<'a>> for DependencyError<'a> {
+    fn from(value: ResolutionError<'a>) -> Self {
+        Self::ResolutionError(value)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IncompatibleLockedVersion {
+    package: String,
+    requirement: Range,
+    version: Version,
+}
+impl Display for IncompatibleLockedVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{package} is specified with the requirement `{requirement}`, \
+but it is locked to {version}, which is incompatible.",
+            package = self.package,
+            requirement = self.requirement.spec,
+            version = self.version,
+        )
+    }
+}
+
 fn root_dependencies<Requirements>(
     base_requirements: Requirements,
     locked: &HashMap<String, Version>,
-) -> Result<HashMap<String, Dependency>, ResolutionError>
+) -> Result<HashMap<String, Dependency>, Box<IncompatibleLockedVersion>>
 where
     Requirements: Iterator<Item = (String, Range)>,
 {
@@ -458,13 +502,11 @@ where
             Some(locked_version) => {
                 let compatible = range.range.contains(locked_version);
                 if !compatible {
-                    return Err(ResolutionError::Failure(format!(
-                        "{package} is specified with the requirement `{requirement}`, \
-but it is locked to {version}, which is incompatible.",
-                        package = name,
-                        requirement = range,
-                        version = locked_version,
-                    )));
+                    return Err(Box::new(IncompatibleLockedVersion {
+                        package: name,
+                        requirement: range,
+                        version: locked_version.clone(),
+                    }));
                 }
             }
         };
@@ -497,7 +539,16 @@ pub trait PackageFetcher {
     fn get_dependencies(&self, package: &str) -> Result<Package, Box<dyn StdError>>;
 }
 
-struct DependencyProvider<'a> {
+#[derive(Debug, Clone)]
+pub struct FetchError(String);
+impl StdError for FetchError {}
+impl Display for FetchError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+pub struct DependencyProvider<'a> {
     packages: RefCell<HashMap<String, Package>>,
     remote: Box<dyn PackageFetcher>,
     locked: &'a HashMap<String, Version>,
@@ -530,10 +581,13 @@ impl<'a> DependencyProvider<'a> {
         // `&self` with interop mutability.
         &self,
         name: &str,
-    ) -> Result<(), Box<dyn StdError>> {
+    ) -> Result<(), FetchError> {
         let mut packages = self.packages.borrow_mut();
         if packages.get(name).is_none() {
-            let mut package = self.remote.get_dependencies(name)?;
+            let mut package = self
+                .remote
+                .get_dependencies(name)
+                .map_err(|e| FetchError(e.to_string()))?;
             // Sort the packages from newest to oldest, pres after all others
             package.releases.sort_by(|a, b| a.version.cmp(&b.version));
             package.releases.reverse();
@@ -549,40 +603,12 @@ impl<'a> DependencyProvider<'a> {
 
 type PackageName = String;
 
-impl pubgrub::solver::DependencyProvider<PackageName, Version> for DependencyProvider<'_> {
-    fn choose_package_version<
-        Name: Borrow<PackageName>,
-        Ver: Borrow<pubgrub::range::Range<Version>>,
-    >(
-        &self,
-        potential_packages: impl Iterator<Item = (Name, Ver)>,
-    ) -> Result<(Name, Option<Version>), Box<dyn StdError>> {
-        let potential_packages: Vec<_> = potential_packages
-            .map::<Result<_, Box<dyn StdError>>, _>(|pair| {
-                self.ensure_package_fetched(pair.0.borrow())?;
-                Ok(pair)
-            })
-            .collect::<Result<_, _>>()?;
-        let list_available_versions = |name: &String| {
-            self.packages
-                .borrow()
-                .get(name)
-                .cloned()
-                .into_iter()
-                .flat_map(|p| p.releases.into_iter())
-                .map(|p| p.version)
-        };
-        Ok(choose_package_with_fewest_versions(
-            list_available_versions,
-            potential_packages.into_iter(),
-        ))
-    }
-
+impl pubgrub::DependencyProvider for DependencyProvider<'_> {
     fn get_dependencies(
         &self,
-        name: &PackageName,
-        version: &Version,
-    ) -> Result<pubgrub::solver::Dependencies<PackageName, Version>, Box<dyn StdError>> {
+        name: &Self::P,
+        version: &Self::V,
+    ) -> Result<pubgrub::Dependencies<Self::P, Self::VS, Self::M>, Self::Err> {
         self.ensure_package_fetched(name)?;
         let packages = self.packages.borrow();
         let release = match packages
@@ -592,19 +618,69 @@ impl pubgrub::solver::DependencyProvider<PackageName, Version> for DependencyPro
             .find(|r| &r.version == version)
         {
             Some(release) => release,
-            None => return Ok(Dependencies::Unknown),
+            None => {
+                return Ok(Dependencies::Unavailable(format!(
+                    "version {version} of package {name} not found"
+                )));
+            }
         };
 
         // Only use retired versions if they have been locked
         if release.is_retired() && self.locked.get(name) != Some(version) {
-            return Ok(Dependencies::Unknown);
+            return Ok(Dependencies::Unavailable(format!(
+                "version {version} of package {name} is retired"
+            )));
         }
 
         let mut deps: Map<String, PubgrubRange> = Default::default();
         for (name, d) in &release.requirements {
-            let range = d.requirement.range.clone();
-            deps.insert(name.clone(), range);
+            let range = &d.requirement.range;
+            deps.insert(name.clone(), range.clone());
         }
-        Ok(Dependencies::Known(deps))
+        Ok(Dependencies::Available(deps))
     }
+
+    fn prioritize(
+        &self,
+        name: &Self::P,
+        range: &Self::VS,
+        _package_conflicts_counts: &pubgrub::PackageResolutionStatistics,
+    ) -> Self::Priority {
+        Reverse(
+            self.packages
+                .borrow()
+                .get(name)
+                .into_iter()
+                .flat_map(|p| &p.releases)
+                .filter(|r| range.contains(&r.version))
+                .count(),
+        )
+    }
+
+    fn choose_version(
+        &self,
+        name: &Self::P,
+        range: &Self::VS,
+    ) -> Result<Option<Self::V>, Self::Err> {
+        self.ensure_package_fetched(name)?;
+        let packages = self.packages.borrow();
+        let compatible_packages = packages
+            .get(name)
+            .into_iter()
+            .flat_map(|p| &p.releases)
+            .filter(|&r| range.contains(&r.version))
+            .map(|r| r.version.clone());
+        match compatible_packages.clone().filter(|v| !v.is_pre()).max() {
+            // Don't resolve to a pre-releaase package unless we *have* to
+            Some(v) => Ok(Some(v)),
+            None => Ok(compatible_packages.max()),
+        }
+    }
+
+    type Priority = Reverse<usize>;
+    type Err = FetchError;
+    type P = PackageName;
+    type V = Version;
+    type VS = PubgrubRange;
+    type M = String;
 }

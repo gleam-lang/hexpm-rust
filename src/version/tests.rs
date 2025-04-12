@@ -4,7 +4,6 @@ use std::{
 };
 
 use parser::Error;
-use pubgrub::version::Version as _;
 
 use crate::{ApiError, Release, RetirementReason, RetirementStatus};
 
@@ -212,18 +211,14 @@ fn v_(major: u32, minor: u32, patch: u32, pre: Vec<Identifier>, build: Option<St
     }
 }
 
-type PubgrubRange = pubgrub::range::Range<Version>;
+type PubgrubRange = pubgrub::Range<Version>;
 
-parse_range_test!(leading_space, " 1.2.3", PubgrubRange::exact(v(1, 2, 3)));
-parse_range_test!(trailing_space, "1.2.3 ", PubgrubRange::exact(v(1, 2, 3)));
+parse_range_test!(leading_space, " 1.2.3", exact(v(1, 2, 3)));
+parse_range_test!(trailing_space, "1.2.3 ", exact(v(1, 2, 3)));
 
-parse_range_test!(eq_triplet, "== 1.2.3 ", PubgrubRange::exact(v(1, 2, 3)));
+parse_range_test!(eq_triplet, "== 1.2.3 ", exact(v(1, 2, 3)));
 
-parse_range_test!(
-    eq_triplet_nospace,
-    "==1.2.3 ",
-    PubgrubRange::exact(v(1, 2, 3))
-);
+parse_range_test!(eq_triplet_nospace, "==1.2.3 ", exact(v(1, 2, 3)));
 
 parse_range_test!(
     neq_triplet,
@@ -231,12 +226,12 @@ parse_range_test!(
     PubgrubRange::strictly_lower_than(v(1, 2, 3)).union(&PubgrubRange::higher_than(v(1, 2, 4)))
 );
 
-parse_range_test!(implicit_eq, "2.2.3", PubgrubRange::exact(v(2, 2, 3)));
+parse_range_test!(implicit_eq, "2.2.3", exact(v(2, 2, 3)));
 
 parse_range_test!(
     range_pre_build,
     "1.2.3-thing+oop",
-    PubgrubRange::exact(v_(
+    exact(v_(
         1,
         2,
         3,
@@ -780,6 +775,9 @@ fn resolution_no_matching_version() {
 
 #[test]
 fn resolution_locked_version_doesnt_satisfy_requirements() {
+    let locked_version = vec![("gleam_stdlib".into(), Version::new(0, 2, 0))]
+        .into_iter()
+        .collect();
     let err = resolve_versions(
         make_remote(),
         "app".to_string(),
@@ -788,19 +786,14 @@ fn resolution_locked_version_doesnt_satisfy_requirements() {
             Range::new("~> 0.1.0".to_string()).unwrap(),
         )]
         .into_iter(),
-        &vec![("gleam_stdlib".into(), Version::new(0, 2, 0))]
-            .into_iter()
-            .collect(),
+        &locked_version,
     )
     .unwrap_err();
 
-    match err {
-        PubGrubError::Failure(msg) => assert_eq!(
-            msg,
-            "gleam_stdlib is specified with the requirement `~> 0.1.0`, but it is locked to 0.2.0, which is incompatible."
-        ),
-        _ => panic!("wrong error: {}", err),
-    }
+    assert_eq!(
+        err.to_string(),
+        "gleam_stdlib is specified with the requirement `~> 0.1.0`, but it is locked to 0.2.0, which is incompatible."
+    );
 }
 
 #[test]
