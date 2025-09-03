@@ -4,6 +4,7 @@ mod proto;
 mod tests;
 
 pub mod version;
+pub mod metatdata;
 
 use crate::proto::{signed::Signed, versions::Versions};
 use bytes::buf::Buf;
