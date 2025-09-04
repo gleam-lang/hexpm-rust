@@ -1,7 +1,8 @@
 use std::fmt::{self, Display};
-use serde::de::{Deserialize, Visitor};
-use serde::{de, ser};
-use serde::de::{DeserializeSeed, MapAccess, SeqAccess};
+use serde::de::{self, Deserialize, Visitor, DeserializeSeed, MapAccess, SeqAccess};
+
+
+// SERDE ----------------------------------------------------------------------
 
 // Errors ---------------------------------------------------------------------
 pub type Result<T> = std::result::Result<T, Error>;
@@ -23,12 +24,6 @@ pub enum Error {
     ExpectedMap,
     ExpectedMapEnd,
     ExpectedMapComma,
-}
-
-impl ser::Error for Error {
-    fn custom<T: Display>(msg: T) -> Self {
-        Error::Message(msg.to_string())
-    }
 }
 
 impl de::Error for Error {
@@ -266,10 +261,10 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         unimplemented!()
     }
 
-    fn deserialize_option<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de> {
-        unimplemented!()
+        visitor.visit_some(self)
     }
 
     fn deserialize_unit<V>(self, _visitor: V) -> Result<V::Value>
@@ -539,14 +534,9 @@ impl<'de, 'a> MapAccess<'de> for CommaSeparated<'a, 'de> {
 
 #[cfg(test)]
 mod tests {
-    use crate::metatdata::from_str;
+    use std::collections::HashMap;
 
-    #[derive(serde::Deserialize, PartialEq, Debug)]
-    struct Requirement<'a> {
-        app: &'a str,
-        optional: bool,
-        requirement: &'a str,
-    }
+    use crate::metatdata::from_str;
 
     #[test]
     fn test_true() {
@@ -594,6 +584,13 @@ mod tests {
         assert_eq!(expected, from_str::<(&str, &str)>(s).unwrap())
     }
 
+    #[derive(serde::Deserialize, PartialEq, Debug)]
+    struct Requirement<'a> {
+        app: &'a str,
+        optional: bool,
+        requirement: &'a str,
+    }
+
     #[test]
     fn test_requirement() {
         let s =
@@ -607,6 +604,27 @@ mod tests {
             optional: false,
             requirement: ">= 0.33.0 and < 2.0.0",
         };
+
+        assert_eq!(expected, from_str(s).unwrap());
+    }
+
+    #[derive(serde::Deserialize, PartialEq, Debug)]
+    struct Perhaps<'a> {
+        q: Option<&'a str>
+    }
+
+    #[test]
+    fn test_optional_member_present() {
+        let s = r#"[{<<"q">>, <<"present">>}]"#;
+        let expected = Perhaps { q: Some("present") };
+
+        assert_eq!(expected, from_str(s).unwrap());
+    }
+
+    #[test]
+    fn test_optional_member_not_present() {
+        let s = r#"[]"#;
+        let expected = Perhaps { q: None };
 
         assert_eq!(expected, from_str(s).unwrap());
     }
@@ -630,5 +648,29 @@ mod tests {
         let s = r#"[ true , false , true ]"#;
         let expected = vec![true, false, true];
         assert_eq!(expected, from_str::<Vec<bool>>(s).unwrap());
+    }
+
+    #[test]
+    fn test_seq_empty() {
+        let s = r#"[]"#;
+        let expected: Vec<bool> = vec![];
+        assert_eq!(expected, from_str::<Vec<bool>>(s).unwrap());
+    }
+
+    #[test]
+    fn test_map_empty() {
+        let s = r#"[]"#;
+        let expected: HashMap<&str, bool> = HashMap::new();
+        assert_eq!(expected, from_str::<HashMap<&str, bool>>(s).unwrap());
+    }
+
+    #[test]
+    fn test_map() {
+        let s = r#"[{<<"hello">>, true}, {<<"goodbye">>, false}]"#;
+        let mut expected: HashMap<&str, bool> = HashMap::new();
+        expected.insert("hello", true);
+        expected.insert("goodbye", false);
+
+        assert_eq!(expected, from_str::<HashMap<&str, bool>>(s).unwrap());
     }
 }
