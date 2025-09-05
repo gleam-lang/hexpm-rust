@@ -1,6 +1,133 @@
+use std::collections::HashMap;
 use std::fmt::{self, Display};
+use std::io::{Read, Seek};
+use std::marker::PhantomData;
 use serde::de::{self, Deserialize, Visitor, DeserializeSeed, MapAccess, SeqAccess};
+use tar::Archive;
+use camino::Utf8Path;
+use sha2::{Sha256, Digest};
 
+
+use crate::version::{Range, Version};
+use crate::{ Dependency, Release};
+
+
+// API ------------------------------------------------------------------------
+
+#[derive(Debug)]
+pub enum FileAPIError {
+    Silent,
+    SerdeError(Error),
+}
+
+impl Display for FileAPIError {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            FileAPIError::Silent => formatter.write_str("error"),
+            FileAPIError::SerdeError(err) => err.fmt(formatter),
+        }
+    }
+}
+
+impl std::error::Error for FileAPIError {}
+
+
+#[derive(serde::Deserialize)]
+struct RawDependency {
+    app: Option<String>,
+    optional: bool,
+    requirement: String,
+    repository: Option<String>,
+}
+
+pub fn read_archive_release<R>(mut archive: Archive<R>) -> std::result::Result<Release<()>, FileAPIError>
+    where R: Read + Seek, {
+    let meta_path = Utf8Path::new("metadata.config");
+    let mut deps = Vec::new();
+
+    for archive_entry in archive.entries().or(Err(FileAPIError::Silent))? {
+        let mut file = archive_entry.or(Err(FileAPIError::Silent))?;
+        let path = file.header().path().or(Err(FileAPIError::Silent))?;
+        let path = path.as_ref();
+
+        if path == meta_path {
+            let _ = file.read_to_end(&mut deps);
+        }
+    }
+
+    if deps.is_empty() {
+        return Err(FileAPIError::Silent);
+    }
+
+    let raw = read_metadata(std::str::from_utf8(&deps).or(Err(FileAPIError::Silent))?)?;
+    let checksum = compute_outer_checksum(archive)?;
+
+    Ok(Release {
+        version: Version::parse(&raw.version).or(Err(FileAPIError::Silent))?,
+        requirements: raw.requirements,
+        retirement_status: None,
+        outer_checksum: checksum,
+        meta: (),
+    })
+}
+
+pub fn compute_outer_checksum<R>(archive: Archive<R>) -> std::result::Result<Vec<u8>, FileAPIError>
+    where R: Read + Seek, {
+    let mut buf = Vec::new();
+    let mut reader = archive.into_inner();
+    reader.rewind().or(Err(FileAPIError::Silent))?;
+    reader.read_to_end(&mut buf).or(Err(FileAPIError::Silent))?;
+    let mut hasher = Sha256::new();
+    hasher.update(buf);
+    Ok(hasher.finalize().to_vec())
+}
+
+
+pub struct RawRelease {
+    pub version: String,
+    pub requirements: HashMap<String, Dependency>,
+}
+
+fn read_metadata(file_content: &str) -> std::result::Result<RawRelease, FileAPIError> {
+    let mut rest = file_content;
+    let mut version = None;
+    let mut requirements = None;
+
+    while let Some((data, remainder)) = rest.split_once('.') {
+        rest = remainder;
+        let mut de = Deserializer::from_str(data);
+        let key: &str = KeyOnly::new().deserialize(&mut de).unwrap();
+
+        match key {
+            "version" => {
+                version = Some(from_str::<(&str, String)>(data).or(Err(FileAPIError::Silent))?);
+            },
+            "requirements" => {
+                requirements = Some(from_str::<(&str, Vec<(String, RawDependency)>)>(data).or(Err(FileAPIError::Silent))?);
+            },
+            _ => (),
+        }
+    }
+
+    Ok(RawRelease {
+        version: version.ok_or(FileAPIError::Silent)?.1,
+        requirements:
+            requirements.ok_or(FileAPIError::Silent)?
+                .1
+                .into_iter()
+                .map(|(dep_name, dep)| -> std::result::Result<(String, Dependency), FileAPIError> {
+                    Ok((
+                        dep_name,
+                        Dependency {
+                            requirement: Range::new(dep.requirement).or(Err(FileAPIError::Silent))?,
+                            optional: dep.optional,
+                            app: dep.app,
+                            repository: dep.repository,
+                        }
+                    ))
+                }).collect::<std::result::Result<HashMap<String, Dependency>, FileAPIError>>()?,
+    })
+}
 
 // SERDE ----------------------------------------------------------------------
 
@@ -527,6 +654,59 @@ impl<'de, 'a> MapAccess<'de> for CommaSeparated<'a, 'de> {
         }
 
         val
+    }
+}
+
+// key only -------------------------------------------------------------------
+
+pub struct KeyOnly<T> {
+    marker: PhantomData<T>,
+}
+
+impl<T> KeyOnly<T> {
+    pub fn new() -> Self {
+        Self { marker: PhantomData, }
+    }
+}
+
+impl<'de, T> Visitor<'de> for KeyOnly<T>
+where
+    T: Deserialize<'de>,
+{
+    type Value = T;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "expected a sequence with at least one element")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>, {
+
+        let first = match seq.next_element()? {
+            Some(first) => first,
+            None => {
+                return Err(de::Error::invalid_length(0, &self));
+            },
+        };
+
+        while let Some(_) = seq.next_element::<T>()? {}
+
+        Ok(first)
+    }
+}
+
+impl<'de, T> DeserializeSeed<'de> for KeyOnly<T>
+where
+    T: Deserialize<'de>,
+{
+    type Value = T;
+
+    fn deserialize<D>(self, deserializer: D) -> std::result::Result<Self::Value, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(self)
     }
 }
 
