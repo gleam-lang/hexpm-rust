@@ -48,10 +48,18 @@ impl fmt::Display for Error {
             EmptyPredicate => write!(fmt, "encountered empty predicate"),
             EmptyRange => write!(fmt, "encountered empty range"),
             MinorVersionMissing(major) => {
-                write!(fmt, "missing minor and patch versions: {:?}", major)
+                write!(
+                    fmt,
+                    "incomplete version: {}.x.x - versions must follow MAJOR.MINOR.PATCH format (e.g., {}.0.0)",
+                    major, major
+                )
             }
             PatchVersionMissing(major, minor) => {
-                write!(fmt, "missing patch version: {:?}.{:?}", major, minor)
+                write!(
+                    fmt,
+                    "incomplete version: {}.{}.x - versions must follow MAJOR.MINOR.PATCH format (e.g., {}.{}.0)",
+                    major, minor, major, minor
+                )
             }
         }
     }

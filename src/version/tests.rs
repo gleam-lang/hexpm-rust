@@ -469,3 +469,39 @@ fn missing_minor_has_correct_error_type() {
 fn missing_patch_has_correct_error_type() {
     assert_eq!(Version::parse("1.2"), Err(Error::PatchVersionMissing(1, 2)))
 }
+
+// Tests for improved error messages from issue #35
+#[test]
+fn range_incomplete_patch_left_side() {
+    let error = Range::new(">= 0.34".to_string()).unwrap_err();
+    let error_msg = error.to_string();
+    assert!(error_msg.contains("incomplete version"));
+    assert!(error_msg.contains("0.34"));
+    assert!(error_msg.contains("MAJOR.MINOR.PATCH"));
+}
+
+#[test]
+fn range_incomplete_patch_right_side() {
+    let error = Range::new("< 2.0".to_string()).unwrap_err();
+    let error_msg = error.to_string();
+    assert!(error_msg.contains("incomplete version"));
+    assert!(error_msg.contains("2.0"));
+    assert!(error_msg.contains("MAJOR.MINOR.PATCH"));
+}
+
+#[test]
+fn range_incomplete_patch_both_sides() {
+    let error = Range::new(">= 0.34 and < 2.0.0".to_string()).unwrap_err();
+    let error_msg = error.to_string();
+    assert!(error_msg.contains("incomplete version"));
+    assert!(error_msg.contains("0.34"));
+}
+
+#[test]
+fn range_incomplete_major_only() {
+    let error = Range::new(">= 1".to_string()).unwrap_err();
+    let error_msg = error.to_string();
+    assert!(error_msg.contains("incomplete version"));
+    assert!(error_msg.contains("1.x.x"));
+    assert!(error_msg.contains("1.0.0"));
+}
