@@ -184,14 +184,13 @@ async fn remove_docs_success() {
     let mut config = Config::new();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
-    let result = crate::api_remove_docs_response(
+    crate::api_remove_docs_response(
         http_send(crate::api_remove_docs_request(package, version, key, &config).unwrap())
             .await
             .unwrap(),
     )
     .unwrap();
 
-    assert_eq!(result, ());
     mock.assert();
 }
 
@@ -217,14 +216,13 @@ async fn revert_release_success() {
     let mut config = Config::new();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
-    let result = crate::api_revert_release_response(
+    crate::api_revert_release_response(
         http_send(crate::api_revert_release_request(package, version, key, &config).unwrap())
             .await
             .unwrap(),
     )
     .unwrap();
 
-    assert_eq!(result, ());
     mock.assert();
 }
 
@@ -255,7 +253,7 @@ async fn add_owner_success() {
     let mut config = Config::new();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
-    let result = crate::api_add_owner_response(
+    crate::api_add_owner_response(
         http_send(crate::api_add_owner_request(
             package, owner, level, key, &config,
         ))
@@ -264,7 +262,6 @@ async fn add_owner_success() {
     )
     .unwrap();
 
-    assert_eq!(result, ());
     mock.assert();
 }
 
@@ -294,7 +291,7 @@ async fn transfer_owner_success() {
     let mut config = Config::new();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
-    let result = crate::api_transfer_owner_response(
+    crate::api_transfer_owner_response(
         http_send(crate::api_transfer_owner_request(
             package, owner, key, &config,
         ))
@@ -303,7 +300,6 @@ async fn transfer_owner_success() {
     )
     .unwrap();
 
-    assert_eq!(result, ());
     mock.assert();
 }
 
@@ -329,7 +325,7 @@ async fn remove_owner_success() {
     let mut config = Config::new();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
-    let result = crate::api_remove_owner_response(
+    crate::api_remove_owner_response(
         http_send(crate::api_remove_owner_request(
             package, owner, key, &config,
         ))
@@ -338,7 +334,6 @@ async fn remove_owner_success() {
     )
     .unwrap();
 
-    assert_eq!(result, ());
     mock.assert();
 }
 
@@ -360,14 +355,13 @@ async fn remove_key_success() {
     let mut config = Config::new();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
-    let result = crate::api_remove_api_key_response(
+    crate::api_remove_api_key_response(
         http_send(crate::api_remove_api_key_request(name, key, &config))
             .await
             .unwrap(),
     )
     .unwrap();
 
-    assert_eq!(result, ());
     mock.assert();
 }
 
@@ -389,14 +383,13 @@ async fn remove_key_success_2() {
     let mut config = Config::new();
     config.api_base = http::Uri::try_from(server.url()).unwrap();
 
-    let result = crate::api_remove_api_key_response(
+    crate::api_remove_api_key_response(
         http_send(crate::api_remove_api_key_request(name, key, &config))
             .await
             .unwrap(),
     )
     .unwrap();
 
-    assert_eq!(result, ());
     mock.assert();
 }
 
